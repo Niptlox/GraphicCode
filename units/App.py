@@ -8,6 +8,7 @@ EXIT = 0
 
 class App:
     screen = screen_
+    rect = pg.Rect((0, 0), WSIZE)
 
     def __init__(self, scene=None):
         self.clock = pg.time.Clock()

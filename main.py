@@ -1,247 +1,8 @@
 from units.App import App, Scene, SceneUI, EXIT
 from units.UI.ClassUI import UI
 from units.common import *
-# from GraphicCode.Blocks import *
-
-import pygame as pg
-from units.Image import load_img
-
-# point flags
-POINTIN = 2
-POINTOUT = 4
-POINTINOUT = POINTIN + POINTOUT
-
-# font
-textfont = pg.font.SysFont("Fenix", 19, )  # yes rus
-
-
-class Point:
-    size = (8, 8)
-    sprite = load_img("sprites/PointArrow.png", size)
-    # sprite = pg.Surface(size)
-    # sprite.fill("#FFFFFF")
-    typeP = POINTIN
-
-    def __init__(self, pos, owner):
-        self.owner = owner
-        self.rect = pg.Rect(pos, self.size)
-        self.connections = []
-        self.static = True
-        self.value = 0
-        self.init_sprite()
-
-    def init_sprite(self):
-        pass
-
-    def draw(self, surface: pg.Surface):
-        surface.blit(self.sprite, (self.rect.x + self.owner.rect.x, self.rect.y + self.owner.rect.y))
-
-    def draw_connections(self, surface):
-        x, y = self.pos_on_field()
-        for con in self.connections:
-            cx, cy = con.pos_on_field()
-            pg.draw.line(surface, "#11FF11", (x, y), (cx, cy), width=4)
-
-    def add_connection(self, conn, first=True):
-        if conn not in self.connections:
-            if first:
-                res = conn.add_connection(self, first=False)
-                if not res:
-                    return
-            self.connections.append(conn)
-
-            if self.typeP & POINTIN:
-                self.owner.new_connection_in(self, conn)
-            if self.typeP & POINTOUT:
-                self.owner.new_connection_out(self, conn)
-            return True
-
-    def del_connections(self):
-        # удалить все соединения с точкой
-        for conn in self.connections:
-            i = conn.connections.index(self)
-            conn.connections.pop(i)
-        out = self.connections
-        self.connections = []
-        return out
-
-    def collide_pos(self, pos):
-        pos = pos[0] - self.owner.rect.x, pos[1] - self.owner.rect.y
-        return self.rect.collidepoint(pos)
-
-    def pos_on_field(self):
-        # реальное положение точки с учетом смещения родителя(блока)
-        return self.rect.centerx + self.owner.rect.x, self.rect.centery + self.owner.rect.y
-
-
-class PointIN(Point):
-    typeP = POINTIN
-
-    def get_value(self):
-        if self.connections:
-            return self.connections[0].get_value()
-        return 0
-
-    def add_connection(self, conn, first=True):
-        if len(self.connections) == 0:
-            return super().add_connection(conn, first)
-
-
-class PointOUT(Point):
-    typeP = POINTOUT
-
-    def get_value(self):
-        self.owner.function()
-        return self.value
-
-
-class Block:
-    size = (64, 64)
-    sprite = pg.Surface(size)
-    sprite.fill("#222034")
-    pos_points_in = []
-    pos_points_out = []
-
-    def __init__(self, pos, scene):
-        self.scene = scene
-        self.rect = pg.Rect(pos, self.size)
-        self.points_in = [PointIN(pos, self) for pos in self.pos_points_in]
-        self.points_out = [PointOUT(pos, self) for pos in self.pos_points_out]
-        self.points = self.points_in + self.points_out
-
-    def draw(self, surface: pg.Surface):
-        surface.blit(self.sprite, self.rect)
-        for point in self.points:
-            point.draw(surface)
-
-    def draw_connections(self, surface):
-        for point in self.points:
-            point.draw_connections(surface)
-
-    def collide_pos(self, pos):
-        return self.rect.collidepoint(pos)
-
-    def new_connection_in(self, block_point, connect_point):
-        pass
-
-    def new_connection_out(self, block_point, connect_point):
-        pass
-
-    def function(self):
-        return
-
-
-class BlockValue(Block):
-    # pos_points_out = [(46, 28)]
-    default_value = 0
-
-    def __init__(self, pos, scene):
-        super().__init__(pos, scene)
-        self.value = self.default_value
-
-    def function(self):
-        if self.points_out:
-            self.points_out[0].value = self.value
-        return self.value
-
-    def draw(self, surface: pg.Surface):
-        super().draw(surface)
-        text = textfont.render(str(self.value), True, "#EEEEEE")
-        surface.blit(text, (self.rect.centerx - 3, self.rect.bottom + 3))
-
-
-class BlockBegin(BlockValue):
-    pos_points_out = [(46, 28)]
-    size = (64, 64)
-    sprite = load_img("sprites/BlockBegin1.png", size)
-    default_value = 1
-
-
-class BlockTrue(BlockValue):
-    pos_points_out = [(46, 28)]
-    size = (64, 64)
-    sprite = load_img("sprites/Block1.png", size)
-    default_value = 1
-
-
-class BlockFalse(BlockValue):
-    pos_points_out = [(46, 28)]
-    size = (64, 64)
-    sprite = load_img("sprites/Block0.png", size)
-    default_value = 0
-
-
-class BlockEnd(BlockValue):
-    pos_points_in = [(10, 28)]
-    size = (64, 64)
-    sprite = load_img("sprites/BlockEnd1.png", size)
-    default_value = 0
-
-    def function(self):
-        self.value = self.points_in[0].get_value()
-        return self.value
-
-
-class BlockOR(BlockValue):
-    pos_points_in = [(12, 12), (12, 44)]
-    pos_points_out = [(78, 28)]
-    size = (96, 64)
-    sprite = load_img("sprites/BlockOR.png", size)
-
-    def function(self):
-        val1 = self.points_in[0].get_value()
-        val2 = self.points_in[1].get_value()
-        self.value = val1 or val2
-        self.points_out[0].value = self.value
-        return self.value
-
-
-class BlockAND(BlockValue):
-    pos_points_in = [(12, 12), (12, 44)]
-    pos_points_out = [(78, 28)]
-    size = (96, 64)
-    sprite = load_img("sprites/BlockAND.png", size)
-
-    def function(self):
-        val1 = self.points_in[0].get_value()
-        val2 = self.points_in[1].get_value()
-        self.value = val1 and val2
-        self.points_out[0].value = self.value
-        return self.value
-
-
-class BlockTrigger(BlockValue):
-    pos_points_in = [(12, 12), (12, 44)]
-    pos_points_out = [(110, 28)]
-    size = (128, 64)
-    sprite = load_img("sprites/BlockTRIGGER.png", size)
-
-    def function(self):
-        val1 = self.points_in[0].get_value()
-        val2 = self.points_in[1].get_value()
-        if val1 != 0:
-            self.value = 1
-        elif val2 != 0:
-            self.value = 0
-        self.points_out[0].value = self.value
-        return self.value
-
-
-class BlockNOT(BlockValue):
-    pos_points_in = [(12, 28)]
-    pos_points_out = [(78, 28)]
-    size = (96, 64)
-    sprite = load_img("sprites/BlockNOT.png", size)
-
-    def function(self):
-        val1 = self.points_in[0].get_value()
-        self.value = int(not val1)
-        self.points_out[0].value = self.value
-        return self.value
-
-
-BLOCKS = [BlockBegin, BlockEnd, BlockTrue, BlockFalse, BlockAND, BlockOR, BlockNOT, BlockTrigger]
-help_text = textfont.render("Press the space bar to start... "+"; ".join([f"{i + 1}: {BLOCKS[i].__name__}" for i in range(len(BLOCKS))]), True, "#EEEEEE")
+from Blocks import *
+from copy import deepcopy
 
 
 class Game(App):
@@ -258,16 +19,7 @@ class BlockScene(Scene):
         self.ui.init_ui()
         self.tact = 0
 
-        self.components = []
-        self.components_of_types = {}
-
-        self.add_component(BlockBegin((20, 20), self))
-        self.add_component(BlockEnd((220, 220), self))
-        self.add_component(BlockOR((15, 220), self))
-        self.add_component(BlockAND((220, 20), self))
-
-        self.mouse_connection = None
-        self.get_block = None
+        self.field = Field(self)
 
     def pg_events(self):
         for event in pygame.event.get():
@@ -275,60 +27,146 @@ class BlockScene(Scene):
                 self.running = EXIT
             if self.ui.pg_event(event):
                 continue
-            if event.type == pg.KEYDOWN:
-                if event.key == pg.K_SPACE:
-                    self.begin_process()
-                elif event.key in NUM_KEYS:
-                    num = NUM_KEYS.index(event.key)
-                    obj = BLOCKS[num]((10, 10), self)
-                    self.add_component(obj)
-                elif event.key == pg.K_DELETE:
-                    if self.get_block:
-                        self.del_component(self.get_block[0])
-                        self.get_block = None
-                    if self.mouse_connection:
-                        self.mouse_connection = None
-            elif event.type == pg.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    if not self.get_block:
-                        # реверсивно, чтобы те кто отрисовались последними, обробатывались первыми
-                        for i in range(len(self.components) - 1, -1, -1):
-                            obj = self.components[i]
-                            if obj.collide_pos(event.pos):
-                                for point in obj.points:
-                                    if point.collide_pos(event.pos) and self.mouse_connection != point:
-                                        if self.mouse_connection:
-                                            if (point.typeP & POINTOUT and self.mouse_connection.typeP & POINTIN) or \
-                                                    (point.typeP & POINTIN and self.mouse_connection.typeP & POINTOUT):
-                                                if self.mouse_connection.add_connection(point):
-                                                    self.mouse_connection = None
-                                        else:
-                                            if point.typeP & POINTIN and point.connections:
-                                                # удаление соединения с точкой если к ней уже были присоеденены
-                                                conn = point.del_connections()[0]
-                                                self.mouse_connection = conn
-                                            else:
-                                                self.mouse_connection = point
-                                        break
-                                else:
-                                    if not self.mouse_connection:
-                                        offset = obj.rect.x - event.pos[0], obj.rect.y - event.pos[1]
-                                        self.get_block = (obj, offset)
-                                        # вставить в конец отрисовки, чтоб был впереди
-                                        self.components.pop(i)
-                                        self.components.append(obj)
-                                        break
+            self.field.pg_event(event)
+
+    def update(self):
+        self.field.draw(self.display)
+        self.ui.draw()
+        self.tact += 1
+
+
+class Field:
+    background_color = "#1F2937"
+
+    def __init__(self, scene):
+        self.scene = scene
+        self.rect = pg.Rect((0, 0), WSIZE)
+        self.surface = pg.Surface(self.rect.size)
+
+        self.minimap_scale = 1.8
+        self.minimap_surface = pg.Surface((self.rect.w * self.minimap_scale, self.rect.h * self.minimap_scale))
+        self.minimap_display_rect = pg.Rect((0, 0), (WSIZE[0] // 5, WSIZE[1] // 5))
+        self.minimap_display_rect.bottomright = WSIZE
+        self.minimap_display = pg.Surface(self.minimap_display_rect.size)
+
+        self.components = []
+        self.components_of_types = {}
+
+        self.add_component(BlockBegin((20, 20), self))
+        self.add_component(BlockEnd((120, 120), self))
+        self.add_component(BlockOR((15, 220), self))
+        self.add_component(BlockAND((220, 20), self))
+
+        self.mouse_connection = None
+        self.get_block = None
+
+        self.move_field = False
+        self.scale = 1
+
+        self.variables = {}
+
+    def auto_pos_component(self):
+        x, y = WSIZE[0] // 2 - self.rect.x, WSIZE[1] // 2 - self.rect.y
+        # x, y = -self.rect.x + WSIZE[0] // 2, -self.rect.y + WSIZE[1] // 2
+
+        return x, y
+
+    def pg_event(self, event):
+        if event.type == pg.KEYDOWN:
+            if event.key == pg.K_SPACE:
+                self.begin_process()
+            elif event.key == pg.K_o:
+                self.rect.center = 0, 0
+            elif event.key in NUM_KEYS:
+                num = NUM_KEYS.index(event.key)
+                try:
+                    if event.mod & pygame.KMOD_SHIFT:
+                        obj = BLOCKS_OPERATIONS[num](self.auto_pos_component(), self)
                     else:
-                        self.get_block = None
-                elif event.button == 3:
-                    self.mouse_connection = None
+                        obj = BLOCKS[num](self.auto_pos_component(), self)
+                    self.add_component(obj)
+                except:
+                    print("User press big num")
+            elif event.key == pg.K_DELETE:
+                if self.get_block:
+                    self.del_component(self.get_block[0])
                     self.get_block = None
-            elif event.type == pg.MOUSEBUTTONUP:
+                if self.mouse_connection:
+                    self.mouse_connection = None
+        elif event.type == pg.MOUSEBUTTONDOWN:
+            mpos = event.pos
+            if event.button == 1 or event.button == 3:
+                if not self.get_block:
+                    # реверсивно, чтобы те кто отрисовались последними, обробатывались первыми
+                    for i in range(len(self.components) - 1, -1, -1):
+                        obj = self.components[i]
+                        if obj.collide_pos(mpos):
+                            for point in obj.points:
+                                # перенос, создание соединений меж точками
+                                if point.collide_pos(mpos) and self.mouse_connection != point:
+                                    if self.mouse_connection:
+                                        if self.mouse_connection.add_connection(point):
+                                            self.mouse_connection = None
+                                    else:
+                                        if point.connections and event.button == 3:
+                                            # удаление соединения с var точкой если к ней уже были присоеденены
+                                            conn = point.del_connection(-1)
+                                            self.mouse_connection = conn
+                                        else:
+                                            self.mouse_connection = point
+                                    break
+                            else:
+                                # беру в руку сам блок, есои не рабатаю с соединением
+                                if not self.mouse_connection:
+                                    # копия блока если нажат ctrl
+                                    if pg.key.get_mods() & pg.KMOD_CTRL:
+                                        move_obj = obj.copy()
+                                        self.add_component(move_obj)
+                                        i = len(self.components) - 1
+                                    else:
+                                        move_obj = obj
+                                    offset = [move_obj.rect.x - mpos[0], move_obj.rect.y - mpos[1]]
+
+                                    self.get_block = [move_obj, offset]
+                                    # вставить в конец отрисовки, чтоб был впереди
+                                    self.components.pop(i)
+                                    self.components.append(move_obj)
+                                    pygame.mouse.set_cursor(pg.SYSTEM_CURSOR_SIZEALL)
+                                    break
+                                continue
+                            break
+                    else:
+                        if event.button == 3:
+                            self.mouse_connection = None
+                            self.get_block = None
+                        else:
+                            self.get_block = None
+            elif event.button == 2:
+                self.move_field = self.rect.x - mpos[0], self.rect.y - mpos[1]
+                pygame.mouse.set_cursor(pg.SYSTEM_CURSOR_SIZEALL)
+        elif event.type == pg.MOUSEBUTTONUP:
+            if event.button == 2:
+                self.move_field = False
+            else:
                 self.get_block = None
-            elif event.type == pg.MOUSEMOTION:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        elif event.type == pg.MOUSEMOTION:
+            if self.move_field:
+                self.rect.topleft = [event.pos[0] + self.move_field[0],
+                                     event.pos[1] + self.move_field[1]]
+                if self.get_block:
+                    self.get_block[1] = [self.get_block[0].rect.x - event.pos[0],
+                                         self.get_block[0].rect.y - event.pos[1]]
+            else:
                 if self.get_block:
                     self.get_block[0].rect.topleft = (event.pos[0] + self.get_block[1][0],
                                                       event.pos[1] + self.get_block[1][1])
+        elif event.type == pg.MOUSEWHEEL:
+            self.scale += event.x / 10
+            if self.scale < 1:
+                self.scale = 1
+            elif self.scale > 3:
+                self.scale = 3
 
     def add_component(self, obj):
         self.components.append(obj)
@@ -347,31 +185,63 @@ class BlockScene(Scene):
             print("Ошибочка del_component", obj)
 
     def begin_process(self):
-        for obj in self.components_of_types[BlockEnd]:
+        for obj in self.components_of_types[BlockBegin]:
             try:
-                obj.function()
+                obj.begin()
             except RecursionError as exp:
                 print("Begin_process RecursionError", exp)
 
-    def update(self):
-        self.display.fill("#000000")
+    def draw_minimap(self, surface):
+        # self.minimap_display_rect.center = self.rect.center
+        pos = self.rect.center
+        self.rect.center = self.rect.bottomright
+        self.minimap_surface.fill("#334155")
+        self.draw_components(self.minimap_surface)
+        self.minimap_display = pg.transform.scale(self.minimap_surface, self.minimap_display_rect.size)
+        pg.draw.rect(self.minimap_display, "#94A3B8",
+                     ((0, 0), (self.minimap_display_rect.w-1, self.minimap_display_rect.h-1)), 3)
+        surface.blit(self.minimap_display, self.minimap_display_rect)
+        self.rect.center = pos
 
+    def draw_components(self, surface):
         for obj in self.components:
-            obj.draw(self.display)
+            obj.draw(surface)
         for obj in self.components:
-            obj.draw_connections(self.display)
+            obj.draw_connections(surface)
+
+    def draw_grid(self, big=False):
+        step = 20
+        color = "#374151"
+        if big:
+            step = step * 8
+            color = "#111827"
+        y1, y2 = 0, self.rect.h
+        for x1 in range(self.rect.x % step, self.rect.x % step + self.rect.w, step):
+            pg.draw.line(self.surface, color, (x1, y1), (x1, y2), 2)
+        x1, x2 = 0, self.rect.w
+        for y1 in range(self.rect.y % step, self.rect.y % step + self.rect.h, step):
+            pg.draw.line(self.surface, color, (x1, y1), (x2, y1), 2)
+        if not big:
+            self.draw_grid(big=True)
+
+    def draw(self, surface):
+        self.surface.fill(self.background_color)
+        self.draw_grid()
+        self.draw_components(self.surface)
         if self.mouse_connection:
-            pg.draw.line(self.display, "#11FF11", self.mouse_connection.pos_on_field(), pg.mouse.get_pos(), width=2)
-        self.display.blit(help_text, (5, 5))
-        self.ui.draw()
+            pg.draw.line(self.surface, self.mouse_connection.connection_color, self.mouse_connection.pos_on_field(),
+                         pg.mouse.get_pos(), width=2)
+        ty = 5
+        for text in help_text:
+            self.surface.blit(text, (5, ty))
+            ty += 15
 
-        self.tact += 1
+        pg.draw.circle(self.surface, "red", self.rect.topleft, 5, 2)
+        surface.blit(self.surface, (0, 0))
+        self.draw_minimap(surface)
 
 
-class Field:
-    rect = pg.Rect((0, 0), WSIZE)
-
-
+block = pg.Rect(0, 0, 120, 100)
 if __name__ == "__main__":
     game = Game()
     game.main()

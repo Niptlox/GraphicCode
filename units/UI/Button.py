@@ -16,7 +16,7 @@ def createImageButton(size, text="", bg=BLACK, font=TEXTFONT_BTN, text_color=WHI
     surf = get_texture_size(bg, size, colorkey=colorkey)
 
     texframe = font.render(text, True, text_color)
-    texframe_rect = pygame.Rect(((0, 0), texframe.get_size()))
+    texframe_rect = pygame.Rect((0, 0), texframe.get_size())
     # print("texframe_rect.center", texframe_rect, size)
     texframe_rect.center = size[0] // 2, size[1] // 2
     surf.blit(texframe, texframe_rect)
@@ -42,11 +42,20 @@ def createVSteckButtons(size, center_x, start_y, step, images_buttons, funcs, sc
     return buts
 
 
-class Button(pygame.sprite.Sprite):
-    # image = load_image("bomb.png")
-    # image_boom = load_image("boom.png")
+def createHSteckButtons(size, start_x, center_y, step, images_buttons, funcs, screen_position=(0, 0)):
+    y = center_y - size[1] // 2
+    x = start_x
+    step += size[0]
+    buts = []
+    for images_button, func in zip(images_buttons, funcs):
+        but = Button(func, ((x, y), size), *images_button, screenXY=(screen_position[0] + x, screen_position[1] + y))
+        x += step
+        buts.append(but)
+    return buts
 
-    def __init__(self, func, rect, imgUpB, imgInB=None, imgDownB=None, group=None, screenXY=None, disabled=False):        
+
+class Button(pygame.sprite.Sprite):
+    def __init__(self, func, rect, imgUpB, imgInB=None, imgDownB=None, group=None, screenXY=None, disabled=False):
         """func, rect, imgUpB, imgInB=None, imgDownB=None, group=None, screenXY=None, disabled=False
         вызов func(button) - по пораметру передаёться кнопка"""
         # если рамеры == -1 то берётся размер кнопки
@@ -77,7 +86,7 @@ class Button(pygame.sprite.Sprite):
             self.rect = pygame.Rect(xy, size)
             self.imgUpB = pygame.transform.scale(self.imgUpB, self.rect.size)
             self.imgDownB = pygame.transform.scale(self.imgDownB, self.rect.size)
-            self.imgInB = pygame.transform.scale(self.imgInB, self.rect.size)            
+            self.imgInB = pygame.transform.scale(self.imgInB, self.rect.size)
         if not disabled:
             self.image = self.imgUpB
         else:
@@ -96,7 +105,7 @@ class Button(pygame.sprite.Sprite):
     def pg_event(self, event):
         if self.disabled:
             return
-        but = 1        
+        but = 1
         if event.type == pygame.MOUSEBUTTONUP and event.button == but:
             if self.mauseDownButton:
                 self.click()
@@ -114,7 +123,7 @@ class Button(pygame.sprite.Sprite):
                 if self.screenRect.collidepoint(event.pos):
                     self.mauseInButton = True
         self.redraw()
-        
+
     def update(self, *args) -> None:
         if args:
             event = args[0]
@@ -143,7 +152,7 @@ class Button(pygame.sprite.Sprite):
             self.image = self.imgInB
         else:
             self.image = self.imgUpB
-        
+
     def draw(self, surface):
         surface.blit(self.image, self.rect)
 
