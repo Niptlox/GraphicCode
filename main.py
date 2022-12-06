@@ -1,8 +1,10 @@
 from units.App import App, Scene, SceneUI, EXIT
-from units.UI.ClassUI import UI
 from units.common import *
+from UI import MainUI
 from Blocks import *
-from copy import deepcopy
+
+surf = pg.Surface((100, 100))
+surf2 = surf.convert_alpha()
 
 
 class Game(App):
@@ -14,17 +16,17 @@ class Game(App):
 class BlockScene(Scene):
     def __init__(self, app) -> None:
         super().__init__(app)
-
-        self.ui = UI(self)
-        self.ui.init_ui()
-        self.tact = 0
-
         self.field = Field(self)
+
+        self.ui = MainUI(self)
+        self.ui._init_ui()
+        self.tact = 0
 
     def pg_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = EXIT
+
             if self.ui.pg_event(event):
                 continue
             self.field.pg_event(event)
@@ -125,12 +127,11 @@ class Field:
                                         i = len(self.components) - 1
                                     else:
                                         move_obj = obj
+                                        # вставить в конец отрисовки, чтоб был впереди
+                                        self.components.pop(i)
+                                        self.components.append(move_obj)
                                     offset = [move_obj.rect.x - mpos[0], move_obj.rect.y - mpos[1]]
-
                                     self.get_block = [move_obj, offset]
-                                    # вставить в конец отрисовки, чтоб был впереди
-                                    self.components.pop(i)
-                                    self.components.append(move_obj)
                                     pygame.mouse.set_cursor(pg.SYSTEM_CURSOR_SIZEALL)
                                     break
                                 continue
@@ -168,10 +169,24 @@ class Field:
             elif self.scale > 3:
                 self.scale = 3
 
+    def add_block_to_mouse(self, move_obj):
+        mpos = pg.mouse.get_pos()
+        move_obj.rect.center = -self.rect.x + mpos[0], -self.rect.y + mpos[1]
+        offset = [move_obj.rect.x - mpos[0], move_obj.rect.y - mpos[1]]
+        self.get_block = [move_obj, offset]
+        pygame.mouse.set_cursor(pg.SYSTEM_CURSOR_SIZEALL)
+        return move_obj
+
+    def create_component(self, ClassObj, pos=(0, 0)):
+        obj = ClassObj(pos, self)
+        self.add_component(obj)
+        return obj
+
     def add_component(self, obj):
         self.components.append(obj)
         self.components_of_types.setdefault(type(obj), [])
         self.components_of_types[type(obj)].append(obj)
+        return obj
 
     def del_component(self, obj):
         if obj in self.components:
@@ -199,7 +214,7 @@ class Field:
         self.draw_components(self.minimap_surface)
         self.minimap_display = pg.transform.scale(self.minimap_surface, self.minimap_display_rect.size)
         pg.draw.rect(self.minimap_display, "#94A3B8",
-                     ((0, 0), (self.minimap_display_rect.w-1, self.minimap_display_rect.h-1)), 3)
+                     ((0, 0), (self.minimap_display_rect.w - 1, self.minimap_display_rect.h - 1)), 3)
         surface.blit(self.minimap_display, self.minimap_display_rect)
         self.rect.center = pos
 

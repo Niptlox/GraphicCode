@@ -379,6 +379,8 @@ class BlockNOT(BlockValue):
 
 BLOCKS = [BlockBegin, BlockEnd, BlockTrue, BlockFalse, BlockGetVariable, BlockSetVariable]
 BLOCKS_OPERATIONS = [BlockAND, BlockOR, BlockNOT, BlockSum2, BlockSum3]
+BLOCKS_ALL = BLOCKS + BLOCKS_OPERATIONS
+
 help_text = [
     textfont.render(";  ".join([f"{i + 1}:{BLOCKS[i].__name__}" for i in range(len(BLOCKS))]), True, "#EEEEEE"),
     textfont.render("SHIFT + " + ";  ".join([f"{i + 1}:{BLOCKS_OPERATIONS[i].__name__}"
