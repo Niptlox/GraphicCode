@@ -29,7 +29,7 @@ class MainUI(UI):
         self.moving_block = [None, (0, 0)]  # block, mouse_offset
 
     def add_block_to_mouse(self, Blck):
-        # block = self.field.add_block_to_mouse(self.field.create_component(Blck))
+        block = self.field.add_block_to_mouse(self.field.create_component(Blck))
         sx, sy = block.onscreenx, block.onscreeny
         mx, my = pg.mouse.get_pos()
         offset = sx - mx, sy - my
