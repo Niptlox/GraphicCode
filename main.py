@@ -64,6 +64,7 @@ class Field:
 
         self.move_field = False
         self.scale = 1
+        self.handlers_pgevent = []
 
         self.variables = {}
 
@@ -74,12 +75,14 @@ class Field:
         return x, y
 
     def pg_event(self, event):
+        for handler in self.handlers_pgevent:
+            handler(event)
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_SPACE:
                 self.begin_process()
             elif event.key == pg.K_o:
                 self.rect.center = 0, 0
-            elif event.key in NUM_KEYS:
+            elif event.key in NUM_KEYS and event.mod & pg.KMOD_CTRL:
                 num = NUM_KEYS.index(event.key)
                 try:
                     if event.mod & pygame.KMOD_SHIFT:
@@ -254,6 +257,9 @@ class Field:
         pg.draw.circle(self.surface, "red", self.rect.topleft, 5, 2)
         surface.blit(self.surface, (0, 0))
         self.draw_minimap(surface)
+
+    def add_handler_pgevent(self, handler):
+        self.handlers_pgevent.append(handler)
 
 
 block = pg.Rect(0, 0, 120, 100)

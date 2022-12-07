@@ -1,5 +1,6 @@
 import pygame as pg
 from units.Image import load_img
+from units.UI.ElementsUI import TextInput
 
 # point flags
 POINTIN = 2
@@ -8,8 +9,11 @@ POINTVAR = 8
 POINTRUN = 16
 POINTINOUT = POINTIN + POINTOUT
 
-# font
-textfont = pg.font.SysFont("Fenix", 19, )  # yes rus
+# font]
+pg.font.init()
+font = pg.font.SysFont("Arial", 14)
+
+textfont = font#pg.font.SysFont("Fenix", 19, )  # yes rus
 
 PointSize = (10, 10)
 
@@ -310,6 +314,7 @@ class BlockSum3(BlockValue):
     pos_points_in = [(7, 7), (7, 27), (7, 47)]
     pos_points_out = [(79, 27)]
     size = (96, 64)
+    # sprite = load_img("sprites/BlockSum3.png", size)
     sprite = load_img("sprites/BlockSum3.png", size)
 
     def update_value(self):
@@ -364,6 +369,30 @@ class BlockGetVariable(BlockValue):
         return self.value
 
 
+class BlockGetString(BlockValue):
+    pos_points_out = [(72, 19)]
+    size = (86, 32)
+    sprite = load_img("sprites/BlockGetStr.png", size)
+
+    def __init__(self, pos, owner):
+        super().__init__(pos, owner)
+        rect = self.onscreenx + 4, self.onscreeny + 16, 44, 13
+        self.input = TextInput(rect, "", textfont, "black", on_finish_typing=self.set_value, bg_color="white")
+        self.owner.add_handler_pgevent(self.pg_event)
+
+    def set_value(self, value):
+        self.value = value
+
+    def pg_event(self, event):
+        self.input.rect.topleft = self.onscreenx + 4, self.onscreeny + 16
+        self.input.pg_event(event)
+
+    def draw(self, surface: pg.Surface):
+        super().draw(surface)
+        self.input.rect.topleft = self.onscreenx + 4, self.onscreeny + 16
+        self.input.draw(surface)
+
+
 class BlockNOT(BlockValue):
     pos_points_in = [(11, 27)]
     pos_points_out = [(77, 27)]
@@ -377,14 +406,14 @@ class BlockNOT(BlockValue):
         return self.value
 
 
-BLOCKS = [BlockBegin, BlockEnd, BlockTrue, BlockFalse, BlockGetVariable, BlockSetVariable]
+BLOCKS = [BlockBegin, BlockEnd, BlockTrue, BlockFalse, BlockGetVariable, BlockSetVariable, BlockGetString]
 BLOCKS_OPERATIONS = [BlockAND, BlockOR, BlockNOT, BlockSum2, BlockSum3]
 BLOCKS_ALL = BLOCKS + BLOCKS_OPERATIONS
 
 help_text = [
     textfont.render(";  ".join([f"{i + 1}:{BLOCKS[i].__name__}" for i in range(len(BLOCKS))]), True, "#EEEEEE"),
     textfont.render("SHIFT + " + ";  ".join([f"{i + 1}:{BLOCKS_OPERATIONS[i].__name__}"
-                                            for i in range(len(BLOCKS_OPERATIONS))]), True, "#EEEEEE")
+                                             for i in range(len(BLOCKS_OPERATIONS))]), True, "#EEEEEE")
 ]
 
 get_pgevent_blocks = []
