@@ -1,4 +1,6 @@
 import pygame as pg
+
+from BlockSoriteGenerator import StyleSheet, gen_block_value
 from units.Image import load_img
 from units.UI.ElementsUI import TextInput
 
@@ -13,7 +15,7 @@ POINTINOUT = POINTIN + POINTOUT
 pg.font.init()
 font = pg.font.SysFont("Arial", 14)
 
-textfont = font#pg.font.SysFont("Fenix", 19, )  # yes rus
+textfont = font  # pg.font.SysFont("Fenix", 19, )  # yes rus
 
 PointSize = (10, 10)
 
@@ -369,6 +371,22 @@ class BlockGetVariable(BlockValue):
         return self.value
 
 
+class BlockStrToInt(BlockValue):
+    pos_points_in = [(4, 19)]
+    pos_points_out = [(72, 19)]
+    size = (86, 32)
+    sprite = load_img("sprites/BlockToInt.png", size)
+
+    def update_value(self):
+        val1: str = self.points_in[0].get_value()
+        if isinstance(val1, (int, float)) or (isinstance(val1, str) and val1.isdigit()):
+            self.value = int(val1)
+        else:
+            self.value = 0
+        self.points_out[0].value = self.value
+        return self.value
+
+
 class BlockGetString(BlockValue):
     pos_points_out = [(72, 19)]
     size = (86, 32)
@@ -406,7 +424,28 @@ class BlockNOT(BlockValue):
         return self.value
 
 
-BLOCKS = [BlockBegin, BlockEnd, BlockTrue, BlockFalse, BlockGetVariable, BlockSetVariable, BlockGetString]
+class BlockMul(BlockValue):
+    # pos_points_in = [(4, 25), (4, 50)]
+    # pos_points_out = [(114, 50)]
+
+    sprite, pos_points_in, pos_points_out = gen_block_value(StyleSheet.Block.MiddleWidth,
+                                                            "Mul *", ["Val 1", "Val 2"], ["Out"])
+    size = sprite.get_size()
+
+    def update_value(self):
+        val1 = self.points_in[0].get_value()
+        val2 = self.points_in[1].get_value()
+        try:
+            self.value = val1 * val2
+        except Exception as ex:
+            self.value = 0
+            print(f"Error ({self.__class__}): {ex}")
+        self.points_out[0].value = self.value
+        return self.value
+
+
+BLOCKS = [BlockBegin, BlockEnd, BlockTrue, BlockFalse, BlockGetVariable, BlockSetVariable, BlockGetString,
+          BlockStrToInt, BlockMul]
 BLOCKS_OPERATIONS = [BlockAND, BlockOR, BlockNOT, BlockSum2, BlockSum3]
 BLOCKS_ALL = BLOCKS + BLOCKS_OPERATIONS
 
