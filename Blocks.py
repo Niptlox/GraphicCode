@@ -1,3 +1,5 @@
+from typing import Any
+
 import pygame as pg
 
 from BlockSoriteGenerator import StyleSheet, gen_block_value
@@ -144,6 +146,8 @@ class Block:
     sprite.fill("#222034")
     pos_points_in = []
     pos_points_out = []
+    pos_pointrun_in = None
+    pos_pointsrun_out = []
 
     def __init__(self, pos, owner):
         self.owner = owner
@@ -151,6 +155,14 @@ class Block:
         self.points_in = [PointVarIN(pos, self) for pos in self.pos_points_in]
         self.points_out = [PointVarOUT(pos, self) for pos in self.pos_points_out]
         self.points = self.points_in + self.points_out
+
+        if self.pos_pointrun_in:
+            self.pointrun_in = PointRunIN(self.pos_pointrun_in, self)
+            self.points += [self.pointrun_in]
+        else:
+            self.pointrun_in = None
+        self.pointsrun_out = [PointRunOUT(pos, self) for pos in self.pos_pointsrun_out]
+        self.points += self.pointsrun_out
 
     def draw(self, surface: pg.Surface):
         surface.blit(self.sprite, (self.onscreenx, self.onscreeny))
@@ -209,16 +221,6 @@ class BlockRun(BlockValue):
     pos_pointrun_in = (4, 4)
     pos_pointsrun_out = [(72, 4)]
 
-    def __init__(self, pos, owner):
-        super().__init__(pos, owner)
-        if self.pos_pointrun_in:
-            self.pointrun_in = PointRunIN(self.pos_pointrun_in, self)
-            self.points += [self.pointrun_in]
-        else:
-            self.pointrun_in = None
-        self.pointsrun_out = [PointRunOUT(pos, self) for pos in self.pos_pointsrun_out]
-        self.points += self.pointsrun_out
-
     def begin(self):
         self.update_value()
         for p in self.pointsrun_out:
@@ -227,7 +229,8 @@ class BlockRun(BlockValue):
 
 class BlockBegin(BlockRun):
     pos_pointrun_in = None
-    pos_pointsrun_out = [(50, 27)]
+    # pos_pointsrun_out = [(50, 27)]
+    pos_pointsrun_out = [(50, 4)]
     pos_points_out = [(50, 50)]
     size = (64, 64)
     sprite = load_img("sprites/BlockBegin1.png", size)
@@ -392,10 +395,11 @@ class BlockGetString(BlockValue):
     size = (86, 32)
     sprite = load_img("sprites/BlockGetStr.png", size)
 
-    def __init__(self, pos, owner):
+    def __init__(self, pos, owner, input_type: Any = str):
         super().__init__(pos, owner)
         rect = self.onscreenx + 4, self.onscreeny + 16, 44, 13
-        self.input = TextInput(rect, "", textfont, "black", on_finish_typing=self.set_value, bg_color="white")
+        self.input = TextInput(rect, "", textfont, "black", on_finish_typing=self.set_value, bg_color="white",
+                               input_type=input_type)
         self.owner.add_handler_pgevent(self.pg_event)
 
     def set_value(self, value):
@@ -409,6 +413,15 @@ class BlockGetString(BlockValue):
         super().draw(surface)
         self.input.rect.topleft = self.onscreenx + 4, self.onscreeny + 16
         self.input.draw(surface)
+
+
+class BlockGetInt(BlockGetString):
+    pos_points_out = [(72, 19)]
+    size = (86, 32)
+    sprite = load_img("sprites/BlockGetInt.png", size)
+
+    def __init__(self, pos, owner):
+        super().__init__(pos, owner, input_type=int)
 
 
 class BlockNOT(BlockValue):
@@ -425,11 +438,8 @@ class BlockNOT(BlockValue):
 
 
 class BlockMul(BlockValue):
-    # pos_points_in = [(4, 25), (4, 50)]
-    # pos_points_out = [(114, 50)]
-
-    sprite, pos_points_in, pos_points_out = gen_block_value(StyleSheet.Block.MiddleWidth,
-                                                            "Mul *", ["Val 1", "Val 2"], ["Out"])
+    sprite, pos_points_in, pos_points_out, pos_pointrun_in, pos_pointsrun_out = gen_block_value(
+        StyleSheet.Block.MiddleWidth, "Mul *", ["Val 1", "Val 2"], ["Out"])
     size = sprite.get_size()
 
     def update_value(self):
@@ -444,8 +454,83 @@ class BlockMul(BlockValue):
         return self.value
 
 
-BLOCKS = [BlockBegin, BlockEnd, BlockTrue, BlockFalse, BlockGetVariable, BlockSetVariable, BlockGetString,
-          BlockStrToInt, BlockMul]
+class BlockEquality(BlockValue):
+    sprite, pos_points_in, pos_points_out, pos_pointrun_in, pos_pointsrun_out = gen_block_value(
+        StyleSheet.Block.MiddleWidth+14, "Equality =", ["Val 1", "Val 2"], ["Out"])
+    size = sprite.get_size()
+
+    def update_value(self):
+        val1 = self.points_in[0].get_value()
+        val2 = self.points_in[1].get_value()
+        try:
+            self.value = val1 == val2
+        except Exception as ex:
+            self.value = 0
+            print(f"Error ({self.__class__}): {ex}")
+        self.points_out[0].value = self.value
+        return self.value
+
+
+class BlockFor(BlockRun):
+    sprite, pos_points_in, pos_points_out, pos_pointrun_in, pos_pointsrun_out = gen_block_value \
+        (StyleSheet.Block.MiddleWidth + 20, "FOR", ["Start", "Stop", "Step"], ["Iter"], ["FOR"], run_block=True)
+    size = sprite.get_size()
+
+    def update_value(self):
+        self.iter = self.points_in[0].get_value()
+        self.end = self.points_in[1].get_value()
+        self.step = self.points_in[1].get_value()
+        try:
+            self.start = int(self.points_in[0].get_value())
+            self.end = int(self.points_in[1].get_value())
+            if self.end == 0:
+                self.end = 10
+            self.step = int(self.points_in[2].get_value())
+            if self.step == 0:
+                self.step = 1
+        except Exception as ex:
+            self.value = 0
+            print(f"Error ({self.__class__}): {ex}")
+        self.points_out[0].value = self.value
+        return self.value
+
+    def begin(self):
+        self.update_value()
+        self.value = self.start
+        run_for = self.pointsrun_out[1]
+        for i in range(self.start, self.end, self.step):
+            self.value = i
+            run_for.begin()
+            # print(self.value, self.start, self.end, self.step)
+        self.pointsrun_out[0].begin()
+        print(self.value, self.start, self.end, self.step)
+
+
+class BlockIf(BlockRun):
+    sprite, pos_points_in, pos_points_out, pos_pointrun_in, pos_pointsrun_out = gen_block_value \
+        (StyleSheet.Block.MiddleWidth + 20, "IF", ["Value"], [], ["True", "False"], run_block=True)
+    size = sprite.get_size()
+
+    def update_value(self):
+        self.condition = self.points_in[0].get_value()
+        try:
+            self.value = self.condition = bool(self.points_in[0].get_value())
+        except Exception as ex:
+            self.value = 0
+            print(f"Error ({self.__class__}): {ex}")
+        return self.value
+
+    def begin(self):
+        self.update_value()
+        if self.condition:
+            self.pointsrun_out[1].begin()
+        else:
+            self.pointsrun_out[2].begin()
+        self.pointsrun_out[0].begin()
+
+
+BLOCKS = [BlockBegin, BlockEnd, BlockGetVariable, BlockSetVariable, BlockGetString, BlockGetInt,
+          BlockStrToInt, BlockMul, BlockEquality, BlockFor, BlockIf, BlockTrue, BlockFalse]
 BLOCKS_OPERATIONS = [BlockAND, BlockOR, BlockNOT, BlockSum2, BlockSum3]
 BLOCKS_ALL = BLOCKS + BLOCKS_OPERATIONS
 

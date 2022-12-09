@@ -27,6 +27,26 @@ class UI:
         return self.rect.y + self.app.rect.y
 
 
+class GroupUI:
+    def __init__(self, components):
+        self.components = components
+
+    def add(self, obj):
+        self.components.append(obj)
+
+    def add_lst(self, lst_objs):
+        for obj in lst_objs:
+            self.add(obj)
+
+    def pg_event(self, event):
+        for component in self.components:
+            component.pg_event(event)
+
+    def draw(self, surface):
+        for component in self.components:
+            component.draw(surface)
+
+
 class SurfaceUI(pg.Surface):
     def __init__(self, rect, flags=0, surface=None):
         self.rect = pg.Rect(rect)
@@ -86,8 +106,7 @@ class ScrollSurface(SurfaceUI):
                     obj.pg_event(event)
                 event.pos = mouse_pos
                 return True
-    
+
     def set_size(self, size):
         self.scroll_surface.set_size(size)
         super(ScrollSurface, self).set_size(size)
-

@@ -25,13 +25,13 @@ class StyleSheet:
 style_sheet = StyleSheet()
 
 
-def gen_block_value(width, name, inputs, outputs):
+def gen_block_value(width, name, inputs, outputs, run_outputs=[], run_block=False):
     top_h = 20
     name_bar_offset = 18
     val_step = 20
     width_to_text = 18
-    y_cnt = max(len(outputs), len(inputs))
-    height = top_h+ 5+ y_cnt * val_step + 5
+    y_cnt = max(len(outputs + run_outputs), len(inputs))
+    height = top_h + 5 + y_cnt * val_step + 5
 
     surface = pg.Surface((width, height))
     surface.fill(style_sheet.Block.MainColor)
@@ -41,21 +41,33 @@ def gen_block_value(width, name, inputs, outputs):
     bar_w = width - name_bar_offset * 2
     pg.draw.rect(surface, style_sheet.Block.BorderColor, ((width - bar_w) // 2, 0, bar_w, top_h))
     surface.blit(s_name, ((width - s_name.get_width()) // 2, 4))
+    run_outputs_pos = []
+    run_input_pos = None
+    if run_block:
+        run_input_pos = (4, 4)
+        run_outputs_pos = [(width - 15, 4)]
     inputs_pos = []
-    y = top_h +10
+    y = top_h + 10
     for st in inputs:
         val_name = style_sheet.Block.MainFont.render(st, True, style_sheet.Block.MainTextColor)
-        surface.blit(val_name, (width_to_text+2, y))
+        surface.blit(val_name, (width_to_text + 2, y))
         inputs_pos.append((5, y))
         y += val_step
 
     outputs_pos = []
-    y = top_h+10
+    y = top_h + 10
+
+    if run_outputs:
+        for st in run_outputs:
+            val_name = style_sheet.Block.MainFont.render(st, True, style_sheet.Block.MainTextColor)
+            surface.blit(val_name, (width - width_to_text - val_name.get_width(), y))
+            run_outputs_pos.append((width - 15, y))
+            y += val_step
+
     for st in outputs:
         val_name = style_sheet.Block.MainFont.render(st, True, style_sheet.Block.MainTextColor)
         surface.blit(val_name, (width - width_to_text - val_name.get_width(), y))
-        outputs_pos.append((width-15, y ))
+        outputs_pos.append((width - 15, y))
         y += val_step
 
-    return surface, inputs_pos, outputs_pos
-
+    return surface, inputs_pos, outputs_pos, run_input_pos, run_outputs_pos

@@ -1,5 +1,6 @@
 from BlockSoriteGenerator import gen_block_value, StyleSheet
 from units.App import App, Scene, SceneUI, EXIT
+from units.UI.ClassUI import SurfaceUI
 from units.common import *
 from UI import MainUI
 from Blocks import *
@@ -36,6 +37,17 @@ class BlockScene(Scene):
         self.field.draw(self.display)
         self.ui.draw()
         self.tact += 1
+
+
+class Console(SurfaceUI):
+    def __init__(self, ui):
+        ui.objects.add(self)
+        rect = pg.Rect(0, 0, 300, 200)
+        rect.bottom = ui.rect.bottom
+        super().__init__(rect)
+
+    def print(self, *text, sep=" "):
+        text = sep.join(text)
 
 
 class Field:
@@ -79,7 +91,7 @@ class Field:
         for handler in self.handlers_pgevent:
             handler(event)
         if event.type == pg.KEYDOWN:
-            if event.key == pg.K_SPACE:
+            if event.key == pg.K_SPACE or event.key == pg.K_F5:
                 self.begin_process()
             elif event.key == pg.K_o:
                 self.rect.center = 0, 0

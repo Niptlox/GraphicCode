@@ -1,5 +1,5 @@
 from units.common import *
-from units.UI.ClassUI import UI, SurfaceUI, ScrollSurface
+from units.UI.ClassUI import UI, SurfaceUI, ScrollSurface, GroupUI
 from units.UI.Button import createImagesButton, Button
 from Blocks import BLOCKS_ALL
 
@@ -12,8 +12,8 @@ bg = (82, 82, 91, 150)
 class MainUI(UI):
     def __init__(self, app):
         super().__init__(app)
+        self.objects = GroupUI([])
 
-    def _init_ui(self):
         self.field = self.app.field
         self.surface = pg.Surface(self.rect.size).convert_alpha()
         self.surface.fill((0, 0, 0, 0))
@@ -25,6 +25,7 @@ class MainUI(UI):
         buttons_func = [lambda _Blck=Blck: self.add_block_to_mouse(_Blck) for Blck in BLOCKS_ALL]
         self.buttons = createHSteckBlockButtons(64, 5, 50, 10, buttons_img, buttons_func)
         self.block_selection_scroll.add_objects(self.buttons)
+        self.objects.add(self.block_selection_scroll)
         # self.block_selection_scroll.rect.center = self.top_surfaceui.rect.center
         self.moving_block = [None, (0, 0)]  # block, mouse_offset
 
@@ -37,8 +38,9 @@ class MainUI(UI):
 
     def draw(self):
         self.surface.fill((0, 0, 0, 0))
-        self.block_selection_scroll.draw(self.surface)
+        # self.block_selection_scroll.draw(self.surface)
         self.screen.blit(self.display, (0, 0))
+        self.objects.draw(self.surface)
         if self.moving_block[0]:
             x, y = pg.mouse.get_pos()
             if self.field.get_block and self.block_selection_scroll.rect.collidepoint(x, y):
@@ -51,7 +53,8 @@ class MainUI(UI):
         pg.display.flip()
 
     def pg_event(self, event: pg.event.Event):
-        self.block_selection_scroll.pg_event(event)
+        # self.block_selection_scroll.pg_event(event)
+        self.objects.pg_event(event)
         if event.type == pg.MOUSEWHEEL:
             if self.block_selection_scroll.mouse_scroll(event.y * 32, 0):
                 return True

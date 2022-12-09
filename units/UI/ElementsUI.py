@@ -41,23 +41,26 @@ class TextLabel(SurfaceUI):
 
 
 class TextInput(TextLabel):
-    def __init__(self, rect, text, font, color, cursor_color=None, cursor_pos=0, cursor_enable=True,
-                 active_typing=False, enable_typing=True, on_finish_typing=lambda _text: None, input_type=str,
+    def __init__(self, rect, text: str, font, color, cursor_color=None, cursor_pos=0, cursor_enable=True,
+                 active_typing=False, enable_typing=True, on_finish_typing=(lambda _: None), input_type=str,
                  **kwargs):
         """InputText(rect, text, font, color, cursor=0, bg_color=(0, 0, 0, 0), text_align=ACENTER)"""
         self.cursor_enable = cursor_enable
         self.cursor_pos = cursor_pos
         self.cursor_xy = (0, 0)
-        self.cursor_img = pg.Surface((1, pg.Rect(rect).h - 4))
+        self.cursor_height = pg.Rect(rect).h - 2
+        self.cursor_img = pg.Surface((1, self.cursor_height))
         self.cursor_img.fill(cursor_color or color)
         self.cursor_timer = 0
-        self.cursor_time = 30
+        self.cursor_time = 40
         # происходит набор тескта
         self.active_typing = active_typing
         # можно ли набирать текст
         self.enable_typing = enable_typing
         self.on_finish_typing = on_finish_typing
         self.input_type = input_type
+        if self.input_type in (int, float) and not text.isdigit():
+            text = "0"
         super(TextInput, self).__init__(rect, text, font, color, **kwargs)
         if enable_typing:
             self.finish_typing()
@@ -136,7 +139,7 @@ class TextInput(TextLabel):
         self.text_pos = self.get_text_position(text)
         self.blit(text, self.text_pos)
         text = self.font.render(self.text[:self.cursor_pos], True, self.color)
-        self.cursor_xy = self.text_pos[0] + text.get_width() - 1, 2
+        self.cursor_xy = self.text_pos[0] + text.get_width() - 1, (self.get_height() - self.cursor_height) // 2
 
 
 class TextLabelAndInput(SurfaceUI):
