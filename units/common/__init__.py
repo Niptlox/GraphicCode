@@ -1,13 +1,16 @@
 import math
+import os
+from logging import warning
 
 import pygame
 import pygame as pg
 
+CWDIR = os.getcwd() + "/"
+
 # INIT GAME ==============================================
 
 print("INIT GAME VARS")
-GAME_VERSION = "0.7"
-WINDOW_SIZE = (2200, 1100)
+VERSION = "0.1a"
 WINDOW_SIZE = (700 * 2, 400 * 2)
 # WINDOW_SIZE = (1920, 1080)
 WSIZE = WINDOW_SIZE
@@ -15,103 +18,13 @@ WSIZE = WINDOW_SIZE
 FPS = 30
 
 pygame.init()  # initiate pygame
-pygame.display.set_caption('Quadish')
+pygame.display.set_caption('GraphiCode')
 
 # screen_ = pygame.display.set_mode(WINDOW_SIZE, flags=pygame.SCALED, vsync=2)
 screen_ = pygame.display.set_mode(WINDOW_SIZE, vsync=2)
 display_ = pygame.Surface(WINDOW_SIZE)
 
-# TILE ==================================================
-
-TILE_SIZE = 32
-# TILE_SIZE = 8
-TSIZE = TILE_SIZE
-
-# TILE_SIZE = 16
-TILE_RECT = (TILE_SIZE, TILE_SIZE)
-TRECT = TILE_RECT
-
-CHUNK_SIZE = 32
-CSIZE = CHUNK_SIZE
-
-CHUNK_SIZE_PX = CHUNK_SIZE * TILE_SIZE
-CSIZEPX = CHUNK_SIZE_PX
-# колво чанков отрисываемых на экране
-WINDOW_CHUNK_SIZE = math.ceil(WINDOW_SIZE[0] / (TILE_SIZE * CHUNK_SIZE)) + 1, \
-                    math.ceil(WINDOW_SIZE[1] / (TILE_SIZE * CHUNK_SIZE)) + 1
-WCSIZE = WINDOW_CHUNK_SIZE
-
-# DEBUG ====================================================
-DEBUG = True
-# DEBUG = False
-show_chunk_grid = True
-show_entity_border = False
-show_group_obj = True
-show_info_menu = True
-
-CHUNK_BD_COLOR = (230, 20, 20)
-
-# PhiscalObject ==================================================
-
-OBJ_NONE = 0
-OBJ_CREATURE = 2
-OBJ_ITEM = 4
-OBJ_TILE = 8
-
-# ITEMS ==========================================================
-
-CLS_NONE = 0
-CLS_TILE = 2
-CLS_TOOL = 4
-CLS_WEAPON = 8
-CLS_SWORD = 16
-CLS_PICKAXE = 32
-CLS_EAT = 64
-
-# GENERATING MAP OR CHANK ========================================
-
-TGENERATE_LOAD = 0
-TGENERATE_INFINITE = 1
-TGENERATE_INFINITE_LANDS = 2
-generate_type = 2  # 0:load map,1: autogenerate
-
-# Player ===========================================================
-
 NUM_KEYS = [pg.K_1, pg.K_2, pg.K_3, pg.K_4, pg.K_5, pg.K_6, pg.K_7, pg.K_8, pg.K_9, pg.K_0]
-
-HAND_SIZE = int(TILE_SIZE // 1.5)
-HAND_RECT = (HAND_SIZE, HAND_SIZE)
-
-FALL_SPEED = 0.7
-MAX_FALL_SPEED = 100
-AUTO_BUILD = True  # копать ближайший если мышка далеко
-
-# РЕЦЕПТЫ ПРЕДМЕТОВ ================================================
-
-# count == -1 : должен косаться предмета
-RECIPES = [
-    [(11, 2), ((12, 1),)],  # доски
-    [(121, 1), ((11, 2),)],  # стол
-    [(122, 1), ((11, 2), (121, -1))],  # стул
-    [(123, 1), ((11, 2), (121, -1))],  # дверь
-    [(126, 1), ((11, 4), (51, 2), (121, -1))],  # шкаф
-    [(127, 1), ((11, 2), (121, -1))],  # люк
-    [(130, 1), ((58, 2), (101, 1), (121, -1))],  # сп мешок из шкур
-    [(125, 1), ((11, 1), (64, 8), (121, -1))],  # котёл
-    [(9, 1), ((64, 2), (11, 1), (51, 2), (61, 1), (121, -1))],  # Tnt
-    # [(9, 1), ((3, 3),)],  # tnt
-    [(55, 1), ((66, 2), (53, 10), (125, -1))],
-    [(501, 1), ((11, 2), (64, 3), (51, 1), (3, 1), (121, -1))],  # sword
-    [(502, 1), ((11, 4), (64, 6), (51, 2), (3, 2), (501, 1), (63, 3), (66, 1), (121, -1))],  # gold sword
-    [(530, 1), ((11, 10), (51, 2), (121, -1))],  # pickaxe
-    [(531, 1), ((11, 4), (64, 5), (51, 1), (3, 1), (121, -1))],  # pickaxe
-    [(532, 1), ((11, 7), (64, 7), (51, 7), (3, 7), (531, 1), (502, 1), (63, 5), (66, 1), (121, -1))],  # gold pickaxe
-]
-
-# INIT TIME ================================================================
-
-EVENT_100_MSEC = pg.USEREVENT + 1
-pygame.time.set_timer(EVENT_100_MSEC, 100, False)
 
 # COLORS ==================================================================
 colors = ['#CD5C5C', '#F08080', '#FA8072', '#E9967A', '#FFA07A', '#DC143C', '#FF0000', '#B22222', '#8B0000', '#FFC0CB',
@@ -131,3 +44,43 @@ colors = ['#CD5C5C', '#F08080', '#FA8072', '#E9967A', '#FFA07A', '#DC143C', '#FF
           '#FDF5E6', '#FFFAF0', '#FFFFF0', '#FAEBD7', '#FAF0E6', '#FFF0F5', '#FFE4E1', '#DCDCDC', '#D3D3D3', '#D3D3D3',
           '#C0C0C0', '#A9A9A9', '#A9A9A9', '#808080', '#808080', '#696969', '#696969', '#778899', '#778899', '#708090',
           '#708090', '#2F4F4F', '#2F4F4F', '#000000']
+
+# SAVE_DATA =================================================
+# class SavedObject:
+# not_save_vars = {"", }
+# is_not_saving = False
+#
+# def get_vars(self, _dict=None):
+#     # print(self.not_save_vars)
+#     if _dict is None:
+#         _dict = self.__dict__.copy()
+#     _dict["__class__"] = self.__class__
+#     for key, value in list(_dict.items()):
+#         if key in self.not_save_vars:
+#             _dict.pop(key)
+#         elif isinstance(value, SavedObject):
+#             if not value.is_not_saving:
+#                 _dict[key] = value.get_vars()
+#             else:
+#                 _dict.pop(key)
+#         elif isinstance(value, pg.Surface) or (
+#                 isinstance(value, (list, tuple)) and value and isinstance(value[0], pg.Surface)):
+#             warning(f"Не контроллируемый {key}: {value}, удален из сохранения!")
+#             _dict.pop(key)
+#         elif isinstance(value, (list, tuple)) and value and isinstance(value[0], SavedObject):
+#             warning(f"Не контроллируемый списочный SavedObject {key}: {value}, удален из сохранения!")
+#             _dict.pop(key)
+#     # print(self.__class__, d)
+#     # pickle.dumps(d)
+#     return _dict
+#
+# def set_vars(self, vrs, _dict=None):
+#     if _dict is None:
+#         _dict = self.__dict__.copy()
+#     if "__class__" in vrs:
+#         vrs.pop("__class__")
+#     for var_name, var_value in vrs.items():
+#         if isinstance(var_value, dict) and var_value.get("__class__"):
+#             _dict[var_name].set_vars(var_value)
+#         else:
+#             _dict[var_name] = var_value

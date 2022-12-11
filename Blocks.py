@@ -3,8 +3,22 @@ from typing import Any
 import pygame as pg
 
 from BlockSoriteGenerator import StyleSheet, gen_block_value
-from units.Image import load_img
+from SerialiseObjects import SavedObject
 from units.UI.ElementsUI import TextInput
+
+
+def load_img(path, size, colorkey=None, alpha=None):
+    print(path)
+    img = pg.image.load(path)
+    if size:
+        img = pg.transform.scale(img, size)
+    if colorkey:
+        img.set_colorkey(colorkey)
+    if alpha:
+        img.convert_alpha()
+        img.set_alpha(alpha)
+    return img
+
 
 # point flags
 POINTIN = 2
@@ -22,7 +36,7 @@ textfont = font  # pg.font.SysFont("Fenix", 19, )  # yes rus
 PointSize = (10, 10)
 
 
-class Point:
+class Point(SavedObject):
     size = PointSize
     sprite = load_img("sprites/PointCircle.png", size)
     # sprite = pg.Surface(size)
@@ -30,9 +44,10 @@ class Point:
     connection_color = "#11FF11"
     typeP = POINTIN + POINTVAR
 
-    def __init__(self, pos, owner):
+    def __init__(self, pos, owner=None):
         self.owner = owner
         self.rect = pg.Rect(pos, self.size)
+        self.rect.topleft
         self.connections = []
         self.static = True
         self.value = 0
@@ -149,7 +164,7 @@ class Block:
     pos_pointrun_in = None
     pos_pointsrun_out = []
 
-    def __init__(self, pos, owner):
+    def __init__(self, pos, owner=None):
         self.owner = owner
         self.rect = pg.Rect(pos, self.size)
         self.points_in = [PointVarIN(pos, self) for pos in self.pos_points_in]
@@ -310,7 +325,12 @@ class BlockSum2(BlockValue):
     def update_value(self):
         val1 = self.points_in[0].get_value()
         val2 = self.points_in[1].get_value()
-        self.value = val1 + val2
+        try:
+            self.value = val1 + val2
+        except Exception as ex:
+            self.value = "Err"
+            print(f"Error ({self.__class__}): {ex}")
+
         self.points_out[0].value = self.value
         return self.value
 
@@ -326,7 +346,12 @@ class BlockSum3(BlockValue):
         val1 = self.points_in[0].get_value()
         val2 = self.points_in[1].get_value()
         val3 = self.points_in[2].get_value()
-        self.value = val1 + val2 + val3
+        try:
+            self.value = val1 + val2 + val3
+        except Exception as ex:
+            self.value = "Err"
+            print(f"Error ({self.__class__}): {ex}")
+
         self.points_out[0].value = self.value
         return self.value
 
@@ -372,6 +397,57 @@ class BlockGetVariable(BlockValue):
         self.value = self.owner.variables.get(val1)
         self.points_out[0].value = self.value
         return self.value
+
+
+class BlockGetVariableS(BlockValue):
+    sprite, pos_points_in, pos_points_out, pos_pointrun_in, pos_pointsrun_out = gen_block_value \
+        (StyleSheet.Block.MiddleWidth + 5, "Get var", ["var"], ["value"], [], run_block=False)
+    size = sprite.get_size()
+
+    def __init__(self, pos, owner, input_type: Any = str):
+        super().__init__(pos, owner)
+        self.var_name = ""
+        rect = self.onscreenx + 4, self.onscreeny + 29, 44, 13
+        self.input = TextInput(rect, "", textfont, "black", on_finish_typing=self.set_value, bg_color="white",
+                               input_type=input_type)
+        self.owner.add_handler_pgevent(self.pg_event)
+
+    def set_value(self, value):
+        self.var_name = value
+
+    def pg_event(self, event):
+        self.input.rect.topleft = self.onscreenx + 4, self.onscreeny + 29
+        self.input.pg_event(event)
+
+    def draw(self, surface: pg.Surface):
+        super().draw(surface)
+        self.input.rect.topleft = self.onscreenx + 4, self.onscreeny + 29
+        self.input.draw(surface)
+
+    def update_value(self):
+        name = self.var_name or self.points_in[0].get_value()
+        self.value = self.owner.variables.get(name)
+        self.points_out[0].value = self.value
+        return self.value
+
+
+class BlockSetVariableS(BlockGetVariableS):
+    sprite, pos_points_in, pos_points_out, pos_pointrun_in, pos_pointsrun_out = gen_block_value \
+        (StyleSheet.Block.MiddleWidth + 10, "Set var", ["var", "value"], ["value"], [], run_block=True)
+    size = sprite.get_size()
+
+    def update_value(self):
+        val1 = self.var_name or self.points_in[0].get_value()
+        val2 = self.points_in[1].get_value()
+        self.value = val1
+        self.owner.variables[val2] = self.value
+        self.points_out[0] = self.value
+        return self.value
+
+    def begin(self):
+        self.update_value()
+        for p in self.pointsrun_out:
+            p.begin()
 
 
 class BlockStrToInt(BlockValue):
@@ -456,7 +532,7 @@ class BlockMul(BlockValue):
 
 class BlockEquality(BlockValue):
     sprite, pos_points_in, pos_points_out, pos_pointrun_in, pos_pointsrun_out = gen_block_value(
-        StyleSheet.Block.MiddleWidth+14, "Equality =", ["Val 1", "Val 2"], ["Out"])
+        StyleSheet.Block.MiddleWidth + 14, "Equality =", ["Val 1", "Val 2"], ["Out"])
     size = sprite.get_size()
 
     def update_value(self):
@@ -529,7 +605,29 @@ class BlockIf(BlockRun):
         self.pointsrun_out[0].begin()
 
 
-BLOCKS = [BlockBegin, BlockEnd, BlockGetVariable, BlockSetVariable, BlockGetString, BlockGetInt,
+class BlockPrint(BlockRun):
+    sprite, pos_points_in, pos_points_out, pos_pointrun_in, pos_pointsrun_out = gen_block_value \
+        (StyleSheet.Block.MiddleWidth, "Print", ["Value"], [], [], run_block=True)
+    size = sprite.get_size()
+
+    def update_value(self):
+        self.value = self.points_in[0].get_value()
+        try:
+            self.value = str(self.value)
+        except Exception as ex:
+            self.value = "0"
+            print(f"Error ({self.__class__}): {ex}")
+        return self.value
+
+    def begin(self):
+        self.update_value()
+        self.owner.console.print(self.value)
+        self.pointsrun_out[0].begin()
+
+
+BLOCKS = [BlockBegin, BlockEnd, BlockPrint, BlockGetVariable, BlockSetVariable, BlockGetVariableS, BlockSetVariableS,
+          BlockGetString,
+          BlockGetInt,
           BlockStrToInt, BlockMul, BlockEquality, BlockFor, BlockIf, BlockTrue, BlockFalse]
 BLOCKS_OPERATIONS = [BlockAND, BlockOR, BlockNOT, BlockSum2, BlockSum3]
 BLOCKS_ALL = BLOCKS + BLOCKS_OPERATIONS

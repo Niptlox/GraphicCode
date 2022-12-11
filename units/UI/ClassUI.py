@@ -52,6 +52,11 @@ class SurfaceUI(pg.Surface):
         self.rect = pg.Rect(rect)
         super().__init__(self.rect.size, flags, surface)
 
+    def set_surface(self, surface):
+        if surface.get_size() != self.get_size():
+            self.set_size(surface.get_size())
+        self.blit(surface, (0, 0))
+
     def draw(self, surface):
         surface.blit(self, self.rect)
 
@@ -67,19 +72,37 @@ class SurfaceUI(pg.Surface):
         return self
 
 
+SCROLL_VERTICAL = 1
+SCROLL_HORIZONTAL = 2
+
+
 class ScrollSurface(SurfaceUI):
     """Поле с прокруткой. Только для объектов с методом 'draw(surface)'"""
 
-    def __init__(self, rect, scroll, background="black"):
+    def __init__(self, rect, scroll, background="black", single_step=15, scroll_type=SCROLL_VERTICAL,
+                 bounds_checking=True):
         super().__init__(rect)
         self.convert_alpha()
         self.scroll_surface = SurfaceUI((scroll, self.rect.size))
         self.objects = []
+        self.bounds_checking = bounds_checking
         self.background = background
+        self.single_step = single_step
+        self.scroll_type = scroll_type
 
     def mouse_scroll(self, dx, dy):
         self.scroll_surface.rect.x += dx
         self.scroll_surface.rect.y += dy
+        # print("x", self.scroll_surface.rect.x, self.scroll_surface.rect.right, self.rect.w, self.scroll_surface.rect.w)
+        if self.bounds_checking:
+            if self.scroll_surface.rect.x > 0:
+                self.scroll_surface.rect.x = 0
+            if self.scroll_surface.rect.y > 0:
+                self.scroll_surface.rect.y = 0
+            if self.scroll_surface.rect.bottom < self.rect.h:
+                self.scroll_surface.rect.bottom = self.rect.h
+            if self.scroll_surface.rect.right < self.rect.w:
+                self.scroll_surface.rect.right = self.rect.w
 
     def add_objects(self, objects):
         self.objects += objects
@@ -98,6 +121,20 @@ class ScrollSurface(SurfaceUI):
         surface.blit(self, self.rect)
 
     def pg_event(self, event: pg.event.Event):
+
+        if event.type == pg.MOUSEBUTTONDOWN and event.button in (pg.BUTTON_WHEELDOWN, pg.BUTTON_WHEELUP):
+            wheel_y = -1 if event.button == pg.BUTTON_WHEELDOWN else 1
+            wheel_x = 0
+            mouse_pos = tuple(event.pos)
+            # if event.type == pg.MOUSEWHEEL:
+            #     wheel_x, wheel_y = event.x, event.y
+            #     mouse_pos = tuple(pg.mouse.get_pos())
+            if self.rect.collidepoint(mouse_pos):
+                if self.scroll_type & SCROLL_HORIZONTAL:
+                    self.mouse_scroll(wheel_y * self.single_step, wheel_x * self.single_step)
+                if self.scroll_type & SCROLL_VERTICAL:
+                    self.mouse_scroll(wheel_x * self.single_step, wheel_y * self.single_step)
+                return True
         if event.type in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP, pg.MOUSEMOTION):
             mouse_pos = tuple(event.pos)
             if self.rect.collidepoint(mouse_pos):
@@ -107,6 +144,19 @@ class ScrollSurface(SurfaceUI):
                 event.pos = mouse_pos
                 return True
 
+    def scroll_to_bottom(self, vertical=True):
+        if vertical:
+            self.scroll_surface.rect.bottom = self.rect.h
+        else:
+            self.scroll_surface.rect.right = self.rect.w
+
+    def scroll_to_top(self, vertical=True):
+        if vertical:
+            self.scroll_surface.rect.x = 0
+        else:
+            self.scroll_surface.rect.y = 0
+
     def set_size(self, size):
         self.scroll_surface.set_size(size)
-        super(ScrollSurface, self).set_size(size)
+        # if resize_rect:
+        #     super(ScrollSurface, self).set_size(size)

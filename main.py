@@ -1,6 +1,9 @@
+import pickle
+
 from BlockSoriteGenerator import gen_block_value, StyleSheet
+from SerialiseObjects import save_project, open_project, SavedObjectList
 from units.App import App, Scene, SceneUI, EXIT
-from units.UI.ClassUI import SurfaceUI
+from units.UI.ClassUI import SurfaceUI, ScrollSurface
 from units.common import *
 from UI import MainUI
 from Blocks import *
@@ -18,10 +21,11 @@ class Game(App):
 class BlockScene(Scene):
     def __init__(self, app) -> None:
         super().__init__(app)
-        self.field = Field(self)
-
         self.ui = MainUI(self)
-        self.ui._init_ui()
+        self.console = Console(self.ui)
+        self.field = Field(self, self.console)
+        self.ui.set_field(self.field)
+
         self.tact = 0
 
     def pg_events(self):
@@ -39,32 +43,47 @@ class BlockScene(Scene):
         self.tact += 1
 
 
-class Console(SurfaceUI):
+class Console(ScrollSurface):
     def __init__(self, ui):
         ui.objects.add(self)
-        rect = pg.Rect(0, 0, 300, 200)
+        rect = pg.Rect(0, 0, 550, 170)
         rect.bottom = ui.rect.bottom
-        super().__init__(rect)
+        rect.right = ui.rect.right - 250
+        self.last_y = 0
+        super().__init__(rect, (0, 0), background="#0F172A",
+                         single_step=textfont.render("T", True, "white").get_height() + 1)
+        # for i in range(100):
+        #     self.print(i)
 
     def print(self, *text, sep=" "):
-        text = sep.join(text)
+        text = ">>> " + sep.join(map(str, text))
+        t = textfont.render(text, True, "white")
+        self.scroll_surface.get_size()
+        surf = SurfaceUI(((1, self.last_y + 1), (self.rect.w - 2, t.get_height())))
+        surf.fill("#1E293B")
+        surf.blit(t, (5, 0))
+        self.add_objects([surf])
+        self.last_y = surf.rect.bottom
+        self.scroll_to_bottom()
 
 
 class Field:
     background_color = "#1F2937"
 
-    def __init__(self, scene):
+    def __init__(self, scene, console):
         self.scene = scene
+        self.console = console
+        self.consol = scene.console
         self.rect = pg.Rect((0, 0), WSIZE)
         self.surface = pg.Surface(self.rect.size)
 
         self.minimap_scale = 1.8
         self.minimap_surface = pg.Surface((self.rect.w * self.minimap_scale, self.rect.h * self.minimap_scale))
-        self.minimap_display_rect = pg.Rect((0, 0), (WSIZE[0] // 5, WSIZE[1] // 5))
+        self.minimap_display_rect = pg.Rect((0, 0), (250, 170))
         self.minimap_display_rect.bottomright = WSIZE
         self.minimap_display = pg.Surface(self.minimap_display_rect.size)
 
-        self.components = []
+        self.components = SavedObjectList([], init_vars_object="rect.topleft", owner=self)
         self.components_of_types = {}
 
         self.add_component(BlockBegin((20, 20), self))
@@ -77,9 +96,13 @@ class Field:
 
         self.move_field = False
         self.scale = 1
-        self.handlers_pgevent = []
 
+        self.handlers_pgevent = []
         self.variables = {}
+
+        # Saving
+        self.file_name = None
+        self.saved = False
 
     def auto_pos_component(self):
         x, y = WSIZE[0] // 2 - self.rect.x, WSIZE[1] // 2 - self.rect.y
@@ -91,20 +114,25 @@ class Field:
         for handler in self.handlers_pgevent:
             handler(event)
         if event.type == pg.KEYDOWN:
-            if event.key == pg.K_SPACE or event.key == pg.K_F5:
-                self.begin_process()
-            elif event.key == pg.K_o:
-                self.rect.center = 0, 0
-            elif event.key in NUM_KEYS and event.mod & pg.KMOD_CTRL:
-                num = NUM_KEYS.index(event.key)
-                try:
-                    if event.mod & pygame.KMOD_SHIFT:
-                        obj = BLOCKS_OPERATIONS[num](self.auto_pos_component(), self)
-                    else:
-                        obj = BLOCKS[num](self.auto_pos_component(), self)
-                    self.add_component(obj)
-                except:
-                    print("User press big num")
+            if event.mod & pg.KMOD_CTRL:
+                if event.key == pg.K_SPACE or event.key == pg.K_F5:
+                    self.begin_process()
+                elif event.key == pg.K_s:
+                    save_project(self)
+                elif event.key == pg.K_o:
+                    open_project(self)
+                elif event.key == pg.K_o:
+                    self.rect.center = 0, 0
+                elif event.key in NUM_KEYS:
+                    num = NUM_KEYS.index(event.key)
+                    try:
+                        if event.mod & pygame.KMOD_SHIFT:
+                            obj = BLOCKS_OPERATIONS[num](self.auto_pos_component(), self)
+                        else:
+                            obj = BLOCKS[num](self.auto_pos_component(), self)
+                        self.add_component(obj)
+                    except:
+                        print("User press big num")
             elif event.key == pg.K_DELETE:
                 if self.get_block:
                     self.del_component(self.get_block[0])
@@ -258,21 +286,25 @@ class Field:
     def draw(self, surface):
         self.surface.fill(self.background_color)
         self.draw_grid()
+        pg.draw.circle(self.surface, "red", self.rect.topleft, 6, 2)
         self.draw_components(self.surface)
         if self.mouse_connection:
             pg.draw.line(self.surface, self.mouse_connection.connection_color, self.mouse_connection.pos_on_field(),
                          pg.mouse.get_pos(), width=2)
-        ty = 5
-        for text in help_text:
-            self.surface.blit(text, (5, ty))
-            ty += 15
+        # ty = 5
+        # for text in help_text:
+        #     self.surface.blit(text, (5, ty))
+        #     ty += 15
 
-        pg.draw.circle(self.surface, "red", self.rect.topleft, 5, 2)
         surface.blit(self.surface, (0, 0))
         self.draw_minimap(surface)
 
     def add_handler_pgevent(self, handler):
         self.handlers_pgevent.append(handler)
+
+
+
+
 
 
 block = pg.Rect(0, 0, 120, 100)

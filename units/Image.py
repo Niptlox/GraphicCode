@@ -18,19 +18,6 @@ def create_border(surface, bd=1, size=TILE_RECT, bd_color=BORDER_COLOR):
 COLORKEY = (0, 255, 0)
 
 
-def load_img(path, size=TILE_RECT, colorkey=COLORKEY, alpha=None):
-    print(path)
-    img = pygame.image.load(path)
-    if size:
-        img = pygame.transform.scale(img, size)
-    if colorkey:
-        img.set_colorkey(colorkey)
-    if alpha:
-        img.convert_alpha()
-        img.set_alpha(alpha)
-    return img
-
-
 def load_imgs(path, count, size=TILE_RECT, colorkey=COLORKEY, alpha=None):
     return [load_img(path.format(i), size, colorkey, alpha) for i in range(count)]
 
