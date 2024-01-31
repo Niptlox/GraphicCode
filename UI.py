@@ -1,6 +1,6 @@
-from units.common import *
-from units.UI.ClassUI import UI, SurfaceUI, ScrollSurface, GroupUI, SCROLL_HORIZONTAL, SCROLL_VERTICAL
-from units.UI.Button import createImagesButton, Button
+from src.common import *
+from src.UI.ClassUI import UI, SurfaceUI, ScrollSurface, GroupUI, SCROLL_HORIZONTAL, SCROLL_VERTICAL
+from src.UI.Button import createImagesButton, Button
 from Blocks import BLOCKS_ALL
 
 pygame.font.init()

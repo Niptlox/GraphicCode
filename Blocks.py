@@ -4,7 +4,8 @@ import pygame as pg
 
 from BlockSoriteGenerator import StyleSheet, gen_block_value
 from SerialiseObjects import SavedObject
-from units.UI.ElementsUI import TextInput
+from src.UI.ElementsUI import TextInput
+from src.splines import draw_bicubik_line
 
 
 def load_img(path, size, colorkey=None, alpha=None):
@@ -18,6 +19,9 @@ def load_img(path, size, colorkey=None, alpha=None):
         img.convert_alpha()
         img.set_alpha(alpha)
     return img
+
+
+
 
 
 # point flags
@@ -61,7 +65,8 @@ class Point(SavedObject):
 
     def draw_connections(self, surface):
         for con in self.connections:
-            pg.draw.line(surface, self.connection_color, self.pos_on_field(), con.pos_on_field(), width=3)
+            draw_bicubik_line(surface, self.connection_color, self.pos_on_field(), con.pos_on_field(), width=3)
+            # pg.draw.line(surface, self.connection_color, self.pos_on_field(), con.pos_on_field(), width=3)
 
     def add_connection(self, conn, first=True):
         # проверка на то что провод идет из выхода во вход
@@ -110,7 +115,8 @@ class Point(SavedObject):
 
     def pos_on_field(self):
         # реальное положение точки с учетом смещения родителя(блока)
-        return self.rect.centerx + self.owner.onscreenx, self.rect.centery + self.owner.onscreeny
+        return pg.Vector2(self.rect.centerx + self.owner.onscreenx, self.rect.centery + self.owner.onscreeny)
+
 
 
 class PointRun(Point):
@@ -185,7 +191,7 @@ class Block:
             point.draw(surface)
 
     def draw_connections(self, surface):
-        for point in self.points:
+        for point in self.points_out:
             point.draw_connections(surface)
 
     def collide_pos(self, pos):
@@ -209,7 +215,7 @@ class Block:
     def new_connection_out(self, block_point, connect_point):
         pass
 
-    def update_value(self):
+    def _update_value(self):
         return
 
 
@@ -222,6 +228,13 @@ class BlockValue(Block):
         self.value = self.default_value
 
     def update_value(self):
+        try:
+            return self._update_value()
+        except Exception as ex:
+            self.value = "Err"
+            print(f"Error ({self.__class__}): {ex}")
+
+    def _update_value(self):
         if self.points_out:
             self.points_out[0].value = self.value
         return self.value
@@ -269,7 +282,7 @@ class BlockEnd(BlockRun):
     sprite = load_img("sprites/BlockEnd1.png", size)
     default_value = 0
 
-    def update_value(self):
+    def _update_value(self):
         self.value = self.points_in[0].get_value()
         return self.value
 
@@ -294,7 +307,7 @@ class BlockOR(BlockValue):
     size = (96, 64)
     sprite = load_img("sprites/BlockOR.png", size)
 
-    def update_value(self):
+    def _update_value(self):
         val1 = self.points_in[0].get_value()
         val2 = self.points_in[1].get_value()
         self.value = val1 or val2
@@ -308,7 +321,7 @@ class BlockAND(BlockValue):
     size = (96, 64)
     sprite = load_img("sprites/BlockAND.png", size)
 
-    def update_value(self):
+    def _update_value(self):
         val1 = self.points_in[0].get_value()
         val2 = self.points_in[1].get_value()
         self.value = val1 and val2
@@ -322,7 +335,7 @@ class BlockSum2(BlockValue):
     size = (96, 64)
     sprite = load_img("sprites/BlockSum2.png", size)
 
-    def update_value(self):
+    def _update_value(self):
         val1 = self.points_in[0].get_value()
         val2 = self.points_in[1].get_value()
         try:
@@ -342,7 +355,7 @@ class BlockSum3(BlockValue):
     # sprite = load_img("sprites/BlockSum3.png", size)
     sprite = load_img("sprites/BlockSum3.png", size)
 
-    def update_value(self):
+    def _update_value(self):
         val1 = self.points_in[0].get_value()
         val2 = self.points_in[1].get_value()
         val3 = self.points_in[2].get_value()
@@ -362,7 +375,7 @@ class BlockTrigger(BlockValue):
     size = (128, 64)
     sprite = load_img("sprites/BlockTRIGGER.png", size)
 
-    def update_value(self):
+    def _update_value(self):
         val1 = self.points_in[0].get_value()
         val2 = self.points_in[1].get_value()
         if val1 != 0:
@@ -378,7 +391,7 @@ class BlockSetVariable(BlockRun):
     size = (86, 64)
     sprite = load_img("sprites/BlockSetVariable.png", size)
 
-    def update_value(self):
+    def _update_value(self):
         val1 = self.points_in[0].get_value()
         val2 = self.points_in[1].get_value()
         self.value = val1
@@ -392,7 +405,7 @@ class BlockGetVariable(BlockValue):
     size = (86, 32)
     sprite = load_img("sprites/BlockGetVariable.png", size)
 
-    def update_value(self):
+    def _update_value(self):
         val1 = self.points_in[0].get_value()
         self.value = self.owner.variables.get(val1)
         self.points_out[0].value = self.value
@@ -424,7 +437,7 @@ class BlockGetVariableS(BlockValue):
         self.input.rect.topleft = self.onscreenx + 4, self.onscreeny + 29
         self.input.draw(surface)
 
-    def update_value(self):
+    def _update_value(self):
         name = self.var_name or self.points_in[0].get_value()
         self.value = self.owner.variables.get(name)
         self.points_out[0].value = self.value
@@ -436,11 +449,10 @@ class BlockSetVariableS(BlockGetVariableS):
         (StyleSheet.Block.MiddleWidth + 10, "Set var", ["var", "value"], ["value"], [], run_block=True)
     size = sprite.get_size()
 
-    def update_value(self):
-        val1 = self.var_name or self.points_in[0].get_value()
-        val2 = self.points_in[1].get_value()
-        self.value = val1
-        self.owner.variables[val2] = self.value
+    def _update_value(self):
+        name = self.var_name or self.points_in[0].get_value()
+        self.value = self.points_in[1].get_value()
+        self.owner.variables[name] = self.value
         self.points_out[0] = self.value
         return self.value
 
@@ -456,7 +468,7 @@ class BlockStrToInt(BlockValue):
     size = (86, 32)
     sprite = load_img("sprites/BlockToInt.png", size)
 
-    def update_value(self):
+    def _update_value(self):
         val1: str = self.points_in[0].get_value()
         if isinstance(val1, (int, float)) or (isinstance(val1, str) and val1.isdigit()):
             self.value = int(val1)
@@ -506,7 +518,7 @@ class BlockNOT(BlockValue):
     size = (96, 64)
     sprite = load_img("sprites/BlockNOT.png", size)
 
-    def update_value(self):
+    def _update_value(self):
         val1 = self.points_in[0].get_value()
         self.value = int(not val1)
         self.points_out[0].value = self.value
@@ -518,7 +530,7 @@ class BlockMul(BlockValue):
         StyleSheet.Block.MiddleWidth, "Mul *", ["Val 1", "Val 2"], ["Out"])
     size = sprite.get_size()
 
-    def update_value(self):
+    def _update_value(self):
         val1 = self.points_in[0].get_value()
         val2 = self.points_in[1].get_value()
         try:
@@ -535,7 +547,7 @@ class BlockEquality(BlockValue):
         StyleSheet.Block.MiddleWidth + 14, "Equality =", ["Val 1", "Val 2"], ["Out"])
     size = sprite.get_size()
 
-    def update_value(self):
+    def _update_value(self):
         val1 = self.points_in[0].get_value()
         val2 = self.points_in[1].get_value()
         try:
@@ -552,7 +564,7 @@ class BlockFor(BlockRun):
         (StyleSheet.Block.MiddleWidth + 20, "FOR", ["Start", "Stop", "Step"], ["Iter"], ["FOR"], run_block=True)
     size = sprite.get_size()
 
-    def update_value(self):
+    def _update_value(self):
         self.iter = self.points_in[0].get_value()
         self.end = self.points_in[1].get_value()
         self.step = self.points_in[1].get_value()
@@ -587,7 +599,7 @@ class BlockIf(BlockRun):
         (StyleSheet.Block.MiddleWidth + 20, "IF", ["Value"], [], ["True", "False"], run_block=True)
     size = sprite.get_size()
 
-    def update_value(self):
+    def _update_value(self):
         self.condition = self.points_in[0].get_value()
         try:
             self.value = self.condition = bool(self.points_in[0].get_value())
@@ -610,7 +622,7 @@ class BlockPrint(BlockRun):
         (StyleSheet.Block.MiddleWidth, "Print", ["Value"], [], [], run_block=True)
     size = sprite.get_size()
 
-    def update_value(self):
+    def _update_value(self):
         self.value = self.points_in[0].get_value()
         try:
             self.value = str(self.value)

@@ -1,4 +1,4 @@
-from units.Texture import *
+from src.Texture import *
 
 DARK = "#27272A"
 DEF_COLOR_SCHEME_BUT = ((WHITE, GRAY, DARK), (BLACK, BLACK, WHITE))

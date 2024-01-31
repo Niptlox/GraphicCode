@@ -1,6 +1,6 @@
 import pygame as pg
 
-from units.UI.ClassUI import SurfaceUI
+from src.UI.ClassUI import SurfaceUI
 
 ACENTER = "center"
 ALEFT = "left"

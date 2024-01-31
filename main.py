@@ -2,9 +2,9 @@ import pickle
 
 from BlockSoriteGenerator import gen_block_value, StyleSheet
 from SerialiseObjects import save_project, open_project, SavedObjectList
-from units.App import App, Scene, SceneUI, EXIT
-from units.UI.ClassUI import SurfaceUI, ScrollSurface
-from units.common import *
+from src.App import App, Scene, SceneUI, EXIT
+from src.UI.ClassUI import SurfaceUI, ScrollSurface
+from src.common import *
 from UI import MainUI
 from Blocks import *
 

@@ -1,4 +1,4 @@
-from units.common import *
+from src.common import *
 
 BORDER_COLOR = "#1C1917"
 

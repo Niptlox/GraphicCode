@@ -1,10 +1,11 @@
 import pygame as pg
 from pygame.locals import *
 
-from units.common import *
+from src.common import *
 
 EXIT = 0
 
+DESKTOP_SIZE = pygame.display.get_desktop_sizes()[0]
 
 class App:
     screen = screen_

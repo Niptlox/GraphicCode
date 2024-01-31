@@ -3,7 +3,7 @@ import pickle
 from logging import warning
 from typing import Union, List
 
-from units.common import VERSION
+from src.common import VERSION
 
 CWDIR = os.getcwd() + "/"
 SAVES_PATH = CWDIR + "saves/"

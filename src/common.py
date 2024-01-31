@@ -1,23 +1,27 @@
 import math
 import os
 from logging import warning
-
+from src.config import WindowCnf
 import pygame
 import pygame as pg
 
 CWDIR = os.getcwd() + "/"
 
 # INIT GAME ==============================================
+pygame.init()  # initiate pygame
 
 print("INIT GAME VARS")
 VERSION = "0.1a"
-WINDOW_SIZE = (700 * 2, 400 * 2)
-# WINDOW_SIZE = (1920, 1080)
+WINDOW_SIZE = list(map(int, WindowCnf.WindowSize))
+FULLSCREEN = WindowCnf.FullScreen
+desktop_size = pygame.display.get_desktop_sizes()[0]
+if FULLSCREEN:
+    WINDOW_SIZE = desktop_size
+
 WSIZE = WINDOW_SIZE
 
 FPS = 30
 
-pygame.init()  # initiate pygame
 pygame.display.set_caption('GraphiCode')
 
 # screen_ = pygame.display.set_mode(WINDOW_SIZE, flags=pygame.SCALED, vsync=2)
